@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ajv/4.11.7/ajv.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script type="text/javascript">
+
+var ref_contract = "rules.seeds";
+
+
+const ajv = new Ajv({allErrors: true, verbose: true});
+
+function openTab(evt, tabName) {
+  var i, tabcontent, tablinks;
+  tabcontent = document.getElementsByClassName("tabcontent");
+  for (i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  tablinks = document.getElementsByClassName("tablinks");
+  for (i = 0; i < tablinks.length; i++) {
+    tablinks[i].className = tablinks[i].className.replace(" active", "");
+  }
+  if( evt != null) {
+  document.getElementById(tabName).style.display = "block";
+  evt.currentTarget.className += " active";
+  }
+  clearQR();
+  if( tabName=="ProposalList" ) {
+    setupProposalListTab();
+  }
+  if( tabName=="Create" ) {
+    setupCreateTab();
+  }
+  if( tabName=="Update" ) {
+    setupUpdateTab();
+  }
+  if( tabName=="Cancel" ) {
+    setupCancelTab();
+  }
+  if( tabName=="TopUpRam" ) {
+    setupRamTab();
+  }  
+}
+
+function setupProposalListTab() {
+  let t = "";
+  let more = true;
+  let lowerbound = "";
+  const chain_endpoint = "https://telos.caleos.io/";
+  const url = chain_endpoint + "v1/chain/get_table_rows";
+  while (more) {
+    const data ={ code: ref_contract,
+                  table: "referendums",
+                  scope: "staged",
+                  lower_bound: lowerbound,
+                  json: "true" };
+    $.ajax({
+      type: "POST",
+      url: url,
+      data: JSON.stringify(data),
+      contentType: "application/json; charset=utf-8",
+      dataType: "json",
+      success: 
+          function(data, status, jqXHR) {
+            if( data.rows.length != 0 ) {
+              for (const row of data.rows) {
+                t += `${row.referendum_id}\t${row.creator}\t${row.title}\n`
+              }
+            }
+            more = data.more;
+            lowerbound = data.next_key;
+          },
+      async: false,
+      error: function(xhr, status, error) {
+      }
+    });
+  }
+  document.getElementById("proposallist").value = t;
+}
+
+function setupCreateTab() {
+  document.getElementById("c_creator").value = "";
+  document.getElementById("c_setting_name").value = "";
+  document.getElementById("c_setting_value").value = "";
+  document.getElementById("c_title").value = "";
+  document.getElementById("c_summary").value = "";
+  document.getElementById("c_description").value = "";
+  document.getElementById("c_image").value = "";
+  document.getElementById("c_url").value = "";
+  updateCreate();
+}
+
+function setupUpdateTab() {
+// get pulldown list of staged proposals by id
+}
+
+function setupCancelTab() {
+// get pulldown list of staged proposals by id
+}
+
+
+function setupRamTab() {
+  document.getElementById("seeds2telos_qty").value = "5.0000";
+  document.getElementById("seeds2telos").checked = true;
+  document.getElementById("buyram").checked = true;
+}
+
+function updateCreate() {
+}
+
+function updateCancel() {
+  let id = document.getElementById("del_ref_id").value;
+}
+
+function setFieldsFromId(id) {
+    const data ={ code: ref_contract,
+                  table: "referendums",
+                  scope: "staged",
+                  lower_bound: id,
+                  upper_bound: id,
+                  json: "true" };
+    const chain_endpoint = "https://telos.caleos.io/";
+    const url = chain_endpoint + "v1/chain/get_table_rows";
+    $.ajax({
+      type: "POST",
+      url: url,
+      data: JSON.stringify(data),
+      contentType: "application/json; charset=utf-8",
+      dataType: "json",
+      success: 
+          function(data, status, jqXHR) {
+            if( data.rows.length != 0 ) {
+              document.getElementById("creator").value = data.rows[0].creator;
+              document.getElementById("setting_name").value = data.rows[0].setting_name;
+              document.getElementById("setting_value").value = data.rows[0].setting_value;
+              document.getElementById("title").value = data.rows[0].title;
+              document.getElementById("summary").value = data.rows[0].summary;
+              document.getElementById("description").value = data.rows[0].description;
+              document.getElementById("image").value = data.rows[0].image;
+              document.getElementById("url").value = data.rows[0].url;
+            } else {
+              document.getElementById("creator").value = "";
+              document.getElementById("setting_name").value = "";
+              document.getElementById("setting_value").value = "";
+              document.getElementById("title").value = "";
+              document.getElementById("summary").value = "";
+              document.getElementById("description").value = "";
+              document.getElementById("image").value = "";
+              document.getElementById("url").value = "";
+            }
+            document.getElementById('image_display').src = 
+              document.getElementById('image').value;
+          },
+      error: function(xhr, status, error) {
+      }
+    });
+  
+}
+
+function esrGenUrl() {
+  const esr_gen_base = "https://cc42.xyz";
+  return esr_gen_base + '/qr';
+}
+function makeQR(transaction) {
+    $.ajax({
+      type: "POST",
+      url: esrGenUrl(),
+      data: JSON.stringify(transaction),
+      contentType: "application/json; charset=utf-8",
+      dataType: "json",
+      success: function(data, status, jqXHR) {
+        qrcode.innerHTML = `<img src=${data.qr}>`;
+        esr.innerHTML = data.esr;
+      },
+      error: function(xhr, status, error) {
+        esr.innerHTML = xhr.responseText;
+      }
+    });
+}
+function clearQR() {
+    qrcode.innerHTML = ``;
+    esr.innerHTML = ``;
+}
+
+function getRows(contract, table, scope, action, erroraction=null) {
+  const chain_endpoint = "https://telos.caleos.io/";
+  const url = chain_endpoint + "v1/chain/get_table_rows";
+  const data ={ code: contract,
+                table: table,
+                scope: scope,
+                json: "true" };
+    $.ajax({
+      type: "POST",
+      url: url,
+      data: JSON.stringify(data),
+      contentType: "application/json; charset=utf-8",
+      dataType: "json",
+      success: action,
+      error: function(xhr, status, error) {
+        if(erroraction==null) {
+          alert(xhr.responseText);
+        } else {
+          erroraction(xhr, status, error);
+        }
+      }
+    });
+}
+
+$(document).ready(function () {
+  $('#create_QR').click(function(){
+    let actions=[];
+    actions.push({
+      account: ref_contract, name: "create",
+      data: {
+        creator: document.getElementById("c_creator").value,
+        setting_name: document.getElementById("c_setting_name").value,
+        setting_value: document.getElementById("c_setting_value").value,
+        title: document.getElementById("c_title").value,
+        summary: document.getElementById("c_summary").value,
+        description: document.getElementById("c_description").value,
+        image: document.getElementById("c_image").value,
+        url: document.getElementById("c_url").value,
+      },
+      authorization: [{actor: "............1", permission: "active"}]
+    })
+
+    transaction =  {
+      actions: actions
+    }
+    console.log(transaction);
+    makeQR(transaction);
+    // TBD: check blockchain for transaction posted, or timeout?
+  });
+  $('#c_url_button').click(function(){
+    window.open(
+      document.getElementById("c_url").value,
+      '_blank'
+    );
+  });
+  $('#update_QR').click(function(){
+    let actions=[];
+    actions.push({
+      account: ref_contract, name: "update",
+      data: {
+        creator: document.getElementById("creator").value,
+        setting_name: document.getElementById("setting_name").value,
+        setting_value: document.getElementById("setting_value").value,
+        title: document.getElementById("title").value,
+        summary: document.getElementById("summary").value,
+        description: document.getElementById("description").value,
+        image: document.getElementById("image").value,
+        url: document.getElementById("url").value,
+      },
+      authorization: [{actor: "............1", permission: "active"}]
+    })
+
+    transaction =  {
+      actions: actions
+    }
+    console.log(transaction);
+    makeQR(transaction);
+    // TBD: check blockchain for transaction posted, or timeout?
+  });
+  $('#url_button').click(function(){
+    window.open(
+      document.getElementById("url").value,
+      '_blank'
+    );
+  });
+  $('#ram_QR').click(function(){
+    let actions=[];
+    if( document.getElementById("seeds2telos").checked ) {
+      actions.push({
+        account: "token.seeds", name: "transfer",
+        data: {
+          quantity: "5.0000 SEEDS",
+          from: "............1",
+          to: "amm.swaps",
+          memo: "swap,0,11"
+        },
+        authorization: [{actor: "............1", permission: "active"}]
+      })
+    }
+    if( document.getElementById("buyram").checked ) {
+      actions.push({
+        account: "eosio", name: "buyrambytes",
+        data: {
+          bytes: 1000,
+          payer: "............1",
+          receiver: document.getElementById("buyramfor").value,
+        },
+        authorization: [{actor: "............1", permission: "active"}]
+      })
+    }
+    transaction =  {
+      actions: actions
+    }
+    console.log(transaction);
+    makeQR(transaction);
+    // TBD: check blockchain for transaction posted, or timeout?
+  });
+  $('#cancel_QR').click(function(){
+    let actions=[];
+    actions.push({
+      account: ref_contract, name: "cancel",
+      data: {
+        id: document.getElementById("del_ref_id").value,
+      },
+      authorization: [{actor: "............1", permission: "active"}]
+    })
+
+    transaction =  {
+      actions: actions
+    }
+    console.log(transaction);
+    makeQR(transaction);
+    // TBD: check blockchain for transaction posted, or timeout?
+  });
+
+});
+</script>
+
+<style>
+body {
+  font-size: 100%;
+}
+@media only screen and (max-width: 740px) {
+  body {
+    font-size: 150%;
+  }
+  .button {
+    text-align: center;
+    font-size: 100%;
+  }
+}
+/* Style the tab */
+.tab {
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+}
+
+/* Style the buttons inside the tab */
+.tab button {
+  background-color: inherit;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+  font-size: 17px;
+}
+
+/* Change background color of buttons on hover */
+.tab button:hover {
+  background-color: #ddd;
+}
+
+/* Create an active/current tablink class */
+.tab button.active {
+  background-color: #ccc;
+}
+
+/* Style the tab content */
+.tabcontent {
+  display: none;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-top: none;
+}
+
+label {
+  display: inline-block;
+  width: 12em;
+  text-align: right;
+}
+.radiolabelhoriz {
+  display: inline-block;
+  width: 6em;
+  text-align: right;
+}
+
+
+</style>
+</head>
+<body>
+
+<h1 style="display:inline; margin:0; float:right; color: red;">BETA</h1>
+<h2>Seeds referendum proposal creation assistant</h2>
+
+<div style="background-color:Gold">
+  <p>
+  <br>
+  This page provides a bare-bones interface for creating, updating, and cancelling referendum proposals for the Seeds community. Proposals created through this interface may be reviewed and voted upon using the Light Wallet mobile application.
+  </p>
+  <br>
+</div>
+<br>
+
+<div class="tab">
+  <button class="tablinks" onclick="openTab(event, 'ProposalList')">Proposal List</button>
+  <button class="tablinks" onclick="openTab(event, 'Create')">Create Proposal</button>
+  <button class="tablinks" onclick="openTab(event, 'Update')">Update Proposal</button>
+  <button class="tablinks" onclick="openTab(event, 'Cancel')">Cancel Proposal</button>
+  <button class="tablinks" onclick="openTab(event, 'TopUpRam')">Top Up RAM</button>
+</div>
+
+<div id="ProposalList" class="tabcontent" style="background-color:Beige;">
+  <h3>Staged Proposals</h3>
+  <p>
+  <textarea id="proposallist" rows="10" name="proposallist" 
+           value="" style="width: 60%; max-width: 100%;"> </textarea>
+  </p>
+</div>
+
+<div id="Create" class="tabcontent" style="background-color:Beige;" >
+  <h3>Create new proposal</h3>
+  <label for="c_creator">Creator:</label>
+  <input type="text" id="c_creator" name="c_creator" value="" > <br>
+  <label for="c_setting_name">setting_name:</label>
+  <input type="text" id="c_setting_name" name="c_setting_name" value="" > <br>
+  <label for="c_setting_value">setting_value:</label>
+  <input type="number" id="c_setting_value" name="c_setting_value" value="" > <br>
+  <label for="c_title">title:</label>
+  <input type="text" id="c_title" name="c_title" value="" > <br>
+  <label for="c_summary">summary:</label>
+  <input type="text" id="c_summary" name="c_summary" value="" > <br>
+  <label for="c_image">image url:</label>
+  <input type="text" id="c_image" name="c_image" value="" 
+    onchange = "document.getElementById('c_image_display').src = 
+                document.getElementById('c_image').value;" > <br>
+  <img id="c_image_display" src="" height="200"> <br>
+  <label for="c_url">url:</label>
+  <input type="text" id="c_url" name="c_url" value="" > 
+  <input type="button" id="c_url_button" value="Visit url" class="button">
+  <br>
+  <label for="c_description">description:</label>
+  <textarea rows="10" id="c_description" name="c_description" 
+           value="{}" style="width: 100%; max-width: 100%;"> </textarea>
+  <p>
+  <div id="button-wrapper">
+  Scan QR code with Light Wallet or Anchor Mobile; <br>
+   or paste esr:// code into Anchor Desktop. <br>
+    <input type="button" id="create_QR" value="Create QR" class="button">
+    <input type="button" value="Clear QR" onclick="clearQR()" class="button">
+  </div>
+
+</div>
+
+<div id="Update" class="tabcontent" style="background-color:Beige;">
+  <h3>Update proposal currently in staging</h3>
+  <p>
+  <label for="ref_id">Id:</label>
+  <input type="text" id="ref_id" name="ref_id" value=""
+    onchange="setFieldsFromId(document.getElementById('ref_id').value);" > <br>
+  <label for="creator">Creator:</label>
+  <input type="text" id="creator" name="creator" value="" > <br>
+  <label for="setting_name">setting_name:</label>
+  <input type="text" id="setting_name" name="setting_name" value="" > <br>
+  <label for="setting_value">setting_value:</label>
+  <input type="number" id="setting_value" name="setting_value" value="" > <br>
+  <label for="title">title:</label>
+  <input type="text" id="title" name="title" value="" > <br>
+  <label for="summary">summary:</label>
+  <input type="text" id="summary" name="summary" value="" > <br>
+  <label for="image">image url:</label>
+  <input type="text" id="image" name="image" value=""
+    onchange = "document.getElementById('image_display').src = 
+                document.getElementById('image').value;" > <br>
+  <img id="image_display" src="" height="200"> <br>
+  <label for="url">url:</label>
+  <input type="text" id="url" name="url" value="" > 
+  <input type="button" id="url_button" value="Visit url" class="button">
+  <br>
+  <label for="description">description:</label>
+  <textarea rows="10" id="description" name="description" 
+           value="{}" style="width: 100%; max-width: 100%;"> </textarea>
+   <br>
+  <div id="button-wrapper">
+  Scan QR code with Light Wallet or Anchor Mobile; <br>
+   or paste esr:// code into Anchor Desktop. <br>
+    <input type="button" id="update_QR" value="Create QR" class="button">
+    <input type="button" value="Clear QR" onclick="clearQR()" class="button">
+  </div>
+
+</div>
+
+<div id="TopUpRam" class="tabcontent" style="background-color:Beige;">
+  <h3>Add RAM to an account</h3>
+(Use this if you get an "insufficient RAM" error)<br><br>
+  <p>
+  This 2-step transaction uses Tswaps to convert SEEDS to TLOS, then uses the TLOS to buy RAM for the specified account
+  </p>
+  <label for="seeds2telos">Convert SEEDS to TLOS</label>
+  <input type="checkbox" id="seeds2telos" 
+         onclick="document.getElementById('seeds2telos_qty').disabled =
+                  !document.getElementById('seeds2telos').checked"> <br>
+  <label for="seeds2telos_qty">SEEDS:</label>
+  <input type="text" id="seeds2telos_qty" name="seeds2telos_qty"> <br>
+  <label for="buyram">Buy 1K of RAM</label>
+  <input type="checkbox" id="buyram" > <br> 
+  <label for="buyramfor">for account:</label>
+  <input type="text" id="buyramfor" name="buyramfor" value="" > <br>
+
+  <br><br>
+  <div id="button-wrapper">
+  Scan QR code with Light Wallet or Anchor Mobile; <br>
+   or paste esr:// code into Anchor Desktop. <br>
+    <input type="button" id="ram_QR" value="Create QR" class="button">
+    <input type="button" value="Clear QR" onclick="clearQR()" class="button">
+  </div>
+</div>
+
+<div id="Cancel" class="tabcontent" style="background-color:Beige;">
+  <h3>Cancel staged proposal</h3>
+  Staked tokens will be returned to creator.<br>
+  <p>
+  <label for="del_ref_id">Id:</label>
+  <input type="text" id="del_ref_id" name="del_ref_id" value="" onchange="updateDelete()"> <br>
+  </p>
+   <br>
+  <div id="button-wrapper">
+  Scan QR code with Light Wallet or Anchor Mobile; <br>
+   or paste esr:// code into Anchor Desktop. <br>
+    <input type="button" id="cancel_QR" value="Create QR" class="button">
+    <input type="button" value="Clear QR" onclick="clearQR()" class="button">
+  </div>
+
+</div>
+
+
+<div id=qrcode> </div>
+<div id=esr> </div>
+
+</body>
+</html>
+

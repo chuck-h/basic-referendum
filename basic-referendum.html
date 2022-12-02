@@ -39,6 +39,12 @@ function openTab(evt, tabName) {
   if( tabName=="Cancel" ) {
     setupCancelTab();
   }
+  if( tabName=="Send" ) {
+    setupSendTab();
+  }
+  if( tabName=="Refund" ) {
+    setupRefundTab();
+  }
   if( tabName=="TopUpRam" ) {
     setupRamTab();
   }  
@@ -100,6 +106,16 @@ function setupCancelTab() {
 // get pulldown list of staged proposals by id
 }
 
+function setupRefundTab() {
+// get refundable balance from balances table?
+}
+
+function setupSendTab() {  
+  document.getElementById("send_qty").value = "1111.0000"; 
+  document.getElementById("send_from").value = "";
+  document.getElementById("send_to").value = "rules.seeds";
+  document.getElementById("send_memo").value = "stake for referendum";
+}
 
 function setupRamTab() {
   document.getElementById("seeds2telos_qty").value = "5.0000";
@@ -269,6 +285,44 @@ $(document).ready(function () {
       '_blank'
     );
   });
+  $('#send_QR').click(function(){
+    let actions=[];
+    actions.push({
+      account: "token.seeds", name: "transfer",
+      data: {
+        quantity: (document.getElementById("send_qty").value + " " +
+                   "SEEDS"),
+        from: document.getElementById("send_from").value,
+        to: document.getElementById("send_to").value,
+        memo: document.getElementById("send_memo").value
+      },
+      authorization: [{actor: "............1", permission: "active"}]
+    })
+
+    transaction =  {
+      actions: actions
+    }
+    console.log(transaction);
+    makeQR(transaction);
+    // TBD: check blockchain for transaction posted, or timeout?
+  });
+  $('#refund_QR').click(function(){
+    let actions=[];
+    actions.push({
+      account: ref_contract, name: "refundstake",
+      data: {
+        sponsor: document.getElementById("refund_to").value,
+      },
+      authorization: [{actor: "............1", permission: "active"}]
+    })
+
+    transaction =  {
+      actions: actions
+    }
+    console.log(transaction);
+    makeQR(transaction);
+    // TBD: check blockchain for transaction posted, or timeout?
+  });
   $('#ram_QR').click(function(){
     let actions=[];
     if( document.getElementById("seeds2telos").checked ) {
@@ -405,6 +459,8 @@ label {
   <button class="tablinks" onclick="openTab(event, 'Create')">Create Proposal</button>
   <button class="tablinks" onclick="openTab(event, 'Update')">Update Proposal</button>
   <button class="tablinks" onclick="openTab(event, 'Cancel')">Cancel Proposal</button>
+  <button class="tablinks" onclick="openTab(event, 'Send')">Send Stake</button>
+  <button class="tablinks" onclick="openTab(event, 'Refund')">Refund Stake</button>
   <button class="tablinks" onclick="openTab(event, 'TopUpRam')">Top Up RAM</button>
 </div>
 
@@ -418,6 +474,8 @@ label {
 
 <div id="Create" class="tabcontent" style="background-color:Beige;" >
   <h3>Create new proposal</h3>
+  Note: Creator must have sent stake in order for submission to be accepted;
+   see [Send Stake] tab <br><br>
   <label for="c_creator">Creator:</label>
   <input type="text" id="c_creator" name="c_creator" value="" > <br>
   <label for="c_setting_name">setting_name:</label>
@@ -484,6 +542,42 @@ label {
   Scan QR code with Light Wallet or Anchor Mobile; <br>
    or paste esr:// code into Anchor Desktop. <br>
     <input type="button" id="update_QR" value="Create QR" class="button">
+    <input type="button" value="Clear QR" onclick="clearQR()" class="button">
+  </div>
+
+</div>
+
+<div id="Send" class="tabcontent" style="background-color:Beige;">
+  <h3>Send SEEDS token stake for referendum</h3>
+  <br><br>
+  <label for="send_qty">Quantity:</label>
+  <input type="text" id="send_qty" name="send_qty" value="1.0000"> 
+  Standard stake is 1111 SEEDS <br>
+  <label for="send_from">From:</label>
+  <input type="text" id="send_from" name="send_from" value=""> 
+  The citizen who is creating the proposal <br>
+  <label for="send_to">To:</label>
+  <input type="text" id="send_to" name="send_to" value=""> <br>
+  <label for="send_memo">Memo:</label>
+  <textarea rows="2" id="send_memo" name="send_memo" value="" style="vertical-align:middle;"> </textarea> <br><br>
+  <div id="button-wrapper">
+    <input type="button" id="send_QR" value="Create QR" class="button">
+    <input type="button" value="Clear QR" onclick="clearQR()" class="button">
+  </div>
+</div>
+
+<div id="Refund" class="tabcontent" style="background-color:Beige;">
+  <h3>Refund staked tokens</h3>
+  Staked tokens will be returned.<br>
+  <p>
+  <label for="refund_to">Refund to:</label>
+  <input type="text" id="refund_to" name="refund_to" value="" >
+  </p>
+   <br>
+  <div id="button-wrapper">
+  Scan QR code with Light Wallet or Anchor Mobile; <br>
+   or paste esr:// code into Anchor Desktop. <br>
+    <input type="button" id="refund_QR" value="Create QR" class="button">
     <input type="button" value="Clear QR" onclick="clearQR()" class="button">
   </div>
 

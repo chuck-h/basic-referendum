@@ -212,10 +212,13 @@ function makeQR(transaction) {
 }
 */
 function makeQR(transaction) {
-    link.transact(transaction).catch((error) => {
+    link.transact(transaction).then().catch((error) => {
         const e = error.toString().split(":");
         const m = e[e.length-1];
-        if (!(m.includes("User canceled"))) {
+        if (m.includes("Unexpectedly encountered undefined")) {
+            // this error on success when signed with LW
+            alert("Please close and ignore the error window");
+        } else if (!(m.includes("User canceled"))) {
             alert(`Error: ${m}\n\nPlease close 'Loading' window`);
         }
     });   

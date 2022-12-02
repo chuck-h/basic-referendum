@@ -214,7 +214,10 @@ function makeQR(transaction) {
 function makeQR(transaction) {
     link.transact(transaction).catch((error) => {
         const e = error.toString().split(":");
-        alert(`Error: ${e[e.length-1]}\n\nPlease close 'Loading' window`);
+        const m = e[e.length-1];
+        if (!(m.includes("User canceled"))) {
+            alert(`Error: ${m}\n\nPlease close 'Loading' window`);
+        }
     });   
 }
 
